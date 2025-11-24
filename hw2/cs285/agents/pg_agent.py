@@ -83,7 +83,10 @@ class PGAgent(nn.Module):
         # step 4: if needed, use all datapoints (s_t, a_t, q_t) to update the PG critic/baseline
         if self.critic is not None:
             # TODO: perform `self.baseline_gradient_steps` updates to the critic/baseline network
-            critic_info: dict = None
+            # critic_info: dict = None
+            for _ in range(self.baseline_gradient_steps):
+                critic_info: dict = self.critic.update(obs, q_values)
+                info.update(critic_info)
 
             info.update(critic_info)
 
@@ -132,7 +135,9 @@ class PGAgent(nn.Module):
         else:
             # TODO: run the critic and use it as a baseline
             # values = None
-            values = self.critic.forward(obs)
+            with torch.no_grad():
+                values = self.critic.forward(ptu.from_numpy(obs))
+            values = ptu.to_numpy(values)
             assert values.shape == q_values.shape
 
             if self.gae_lambda is None:
@@ -146,12 +151,17 @@ class PGAgent(nn.Module):
                 # HINT: append a dummy T+1 value for simpler recursive calculation
                 values = np.append(values, [0])
                 advantages = np.zeros(batch_size + 1)
+                
+                # refer to hw2.pdf eq.15
+                delta = rewards + (1 - terminals) * self.gamma * values[1:] - values[:-1]
 
                 for i in reversed(range(batch_size)):
                     # TODO: recursively compute advantage estimates starting from timestep T.
                     # HINT: use terminals to handle edge cases. terminals[i] is 1 if the state is the last in its
                     # trajectory, and 0 otherwise.
-                    pass
+                    # pass
+                    # refer to hw2.pdf eq.21
+                    advantages[i] = delta[i] + (1 - terminals[i]) * self.gamma * self.gae_lambda * advantages[i + 1]
 
                 # remove dummy advantage
                 advantages = advantages[:-1]
