@@ -1,3 +1,4 @@
+export MUJOCO_GL=egl
 python cs285/scripts/run_hw2.py \
 --env_name Humanoid-v4 --ep_len 1000 \
 --discount 0.99 -n 1000 -l 3 -s 256 -b 50000 -lr 0.001 \
